@@ -107,14 +107,29 @@ python src/main.py
 监控模式下，提交消息需要符合以下格式：
 
 ```
-update skill: solution/sac/{skill-name} v{version}
+update skill: skills/xx/xx/{skill-name} v{version}
 ```
 
-示例：
+或
 
 ```
-update skill: solution/sac/huawei-cloud-sac-new-api v0.0.1
-update skill: solution/sac/clawhub-api-guidance v1.0.0
+update skill: xx/xx/{skill-name} v{version}
+```
+
+**说明**：
+- `skills` 在路径中不是必须的
+- `xx/xx` 的个数不限定
+- 以路径最后的 `{skill-name}` 作为技能名称
+- 如果 commit 不符合上述格式，直接跳过不处理
+
+**示例**：
+
+```
+update skill: skills/clh-api-guidance v0.0.1
+update skill: skills/huawei-cloud-sac-new-api v1.0.0
+update skill: solution/sac/hwc-cli-guidance v0.0.1
+update skill: tools/my-tool v2.0.0
+update skill: my-skill v0.0.1
 ```
 
 ## 项目结构

@@ -11,7 +11,7 @@ from utils.logger import get_logger
 class MonitorPublisher:
     """监控发布器"""
 
-    COMMIT_MESSAGE_PATTERN = re.compile(r"update skill: solution/sac/(\S+) (v\d+\.\d+\.\d+)")
+    COMMIT_MESSAGE_PATTERN = re.compile(r"update skill: (?:skills/)?(?:\w+/)*(\S+) (v\d+\.\d+\.\d+)")
 
     def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient):
         self.github_client = github_client
@@ -40,15 +40,15 @@ class MonitorPublisher:
         """处理提交"""
         commit_info = CommitInfo(
             sha=commit["sha"],
-            message=commit["message"],
-            author=commit["author"],
+            message=commit["commit"]["message"],
+            author=commit["commit"]["author"]["name"],
             timestamp=datetime.fromisoformat(commit["commit"]["author"]["date"])
         )
         self.logger.info(f"检测到新提交: {commit_info.sha} - {commit_info.message}")
 
         try:
             skill_info = self.extract_skill_info(commit_info.message)
-            self.publish_skill(skill_info["skill_name"], skill_info["version"])
+            self.publish_skill(skill_info["skill_name"], skill_info["version"], skill_info["skill_path"])
         except ValueError as e:
             self.logger.warning(f"提交消息格式错误: {str(e)}")
 
@@ -60,8 +60,13 @@ class MonitorPublisher:
         skill_name = match.group(1)
         # 转换受保护的 slug
         skill_name = self.convert_protected_slug(skill_name)
+        # 在仓库中搜索技能的实际路径
+        skill_path = self.find_skill_path(skill_name)
+        if not skill_path:
+            raise ValueError(f"在仓库中未找到技能: {skill_name}")
         return {
             "skill_name": skill_name,
+            "skill_path": skill_path,
             "version": match.group(2)
         }
 
@@ -76,10 +81,51 @@ class MonitorPublisher:
             return slug[:-8] + "-mai"
         return slug
 
-    def publish_skill(self, skill_name: str, version: str):
-        """发布技能"""
-        self.logger.info(f"发布技能: {skill_name} {version}")
+    def find_skill_path(self, skill_name: str) -> str:
+        """在仓库中搜索技能路径"""
+        self.logger.info(f"在仓库中搜索技能: {skill_name}")
+        # 递归搜索仓库中的所有目录
+        found_path = self._search_skill_recursive("", skill_name)
+        if found_path:
+            self.logger.info(f"找到技能路径: {found_path}")
+        else:
+            self.logger.warning(f"未找到技能: {skill_name}")
+        return found_path
+
+    def _search_skill_recursive(self, path: str, skill_name: str) -> str:
+        """递归搜索技能目录"""
         try:
-            self.skill_publisher.publish(skill_name, version, skill_name)
+            items = self.github_client.get_files(path)
+            for item in items:
+                if item["type"] == "dir":
+                    # 检查目录名是否匹配
+                    if item["name"] == skill_name:
+                        # 检查是否包含 skill.md
+                        if self._has_skill_file(item["path"]):
+                            return item["path"]
+                    # 递归搜索子目录
+                    result = self._search_skill_recursive(item["path"], skill_name)
+                    if result:
+                        return result
+        except Exception as e:
+            self.logger.debug(f"搜索目录 {path} 失败: {str(e)}")
+        return None
+
+    def _has_skill_file(self, path: str) -> bool:
+        """检查目录是否包含 skill.md 文件"""
+        try:
+            items = self.github_client.get_files(path)
+            for item in items:
+                if item["type"] == "file" and item["name"] == "skill.md":
+                    return True
+        except Exception as e:
+            self.logger.debug(f"检查目录 {path} 失败: {str(e)}")
+        return False
+
+    def publish_skill(self, skill_name: str, version: str, skill_path: str):
+        """发布技能"""
+        self.logger.info(f"发布技能: {skill_name} {version} (路径: {skill_path})")
+        try:
+            self.skill_publisher.publish(skill_name, version, skill_path)
         except Exception as e:
             self.logger.error(f"发布技能失败: {skill_name} {version} - {str(e)}")
