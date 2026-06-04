@@ -96,6 +96,11 @@ class SkillPublisher:
             display_name = self.extract_display_name(skill_path)
             self.logger.info(f"显示名称: {display_name}")
 
+            # 去掉版本号中的 v 前缀（ClawHub CLI 会自动添加 v 前缀）
+            if version.startswith('v'):
+                version = version[1:]
+            self.logger.info(f"版本号（去除前缀后）: {version}")
+
             # 使用 CLI 发布
             response = self.clawhub_client.publish_skill(
                 skill_path=local_path,
