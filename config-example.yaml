@@ -1,0 +1,25 @@
+# ClawHub 配置（CLI 模式）
+# 注意：使用 CLI 模式时，不需要 API Key
+# 请先运行 `clawhub login` 进行 OAuth 认证
+clawhub:
+  # 发布者句柄（可选）：指定skill发布到哪个组织或用户下
+  # 例如: "your-org-handle" 或 "your-username"
+  owner: ""
+
+# GitHub 配置
+github:
+  # 仓库所有者
+  owner: ""
+  # 仓库名称（只填写仓库名，不包含 URL）
+  repo: ""
+  # 分支名称
+  branch: ""
+  # GitHub个人访问令牌（可选，用于私有仓库或提高API限制）
+  # 创建方式: GitHub Settings -> Developer settings -> Personal access tokens
+  token: ""
+
+# 发布模式：batch（批量发布）或 monitor（监控发布）
+mode: "monitor"
+
+# 日志级别：DEBUG, INFO, WARNING, ERROR
+log_level: "INFO"

@@ -50,7 +50,7 @@ class ConfigManager:
         config = self.load_config()
         self.validate_config(config)
 
-        clawhub_config = ClawHubConfig()
+        clawhub_config = ClawHubConfig(owner=config["clawhub"].get("owner"))
         github_config = GitHubConfig(**config["github"])
 
         return AppConfig(

@@ -6,6 +6,7 @@ from models.models import CommitInfo
 from client.github_client import GitHubClient
 from publisher.skill_publisher import SkillPublisher
 from utils.logger import get_logger
+from utils.published_versions_store import PublishedVersionsStore
 
 
 class MonitorPublisher:
@@ -13,12 +14,13 @@ class MonitorPublisher:
 
     COMMIT_MESSAGE_PATTERN = re.compile(r"update skill: (?:skills/)?(?:\w+/)*(\S+) (v\d+\.\d+\.\d+)")
 
-    def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient):
+    def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient, clawhub_config=None):
         self.github_client = github_client
         self.clawhub_client = clawhub_client
-        self.skill_publisher = SkillPublisher(clawhub_client, github_client)
+        self.skill_publisher = SkillPublisher(clawhub_client, github_client, clawhub_config)
         self.logger = get_logger(__name__)
         self.last_commit_sha: Optional[str] = None
+        self.published_versions_store = PublishedVersionsStore()
 
     def monitor_commits(self, interval: int = 60):
         """监控提交记录"""
@@ -50,7 +52,7 @@ class MonitorPublisher:
             skill_info = self.extract_skill_info(commit_info.message)
             self.publish_skill(skill_info["skill_name"], skill_info["version"], skill_info["skill_path"])
         except ValueError as e:
-            self.logger.warning(f"提交消息格式错误: {str(e)}")
+            self.logger.warning(f"提交消息格式不满足版本发布条件: {str(e)}")
 
     def extract_skill_info(self, commit_message: str) -> dict:
         """从 commit message 中提取技能信息"""
@@ -64,10 +66,16 @@ class MonitorPublisher:
         skill_path = self.find_skill_path(skill_name)
         if not skill_path:
             raise ValueError(f"在仓库中未找到技能: {skill_name}")
+        version = match.group(2)
+        self.logger.info(f"从 commit message 提取的原始版本号: {version}")
+        # 去掉版本号中的所有 v 前缀（ClawHub CLI 会自动添加 v 前缀）
+        while version.startswith('v'):
+            version = version[1:]
+        self.logger.info(f"处理后的版本号: {version}")
         return {
             "skill_name": skill_name,
             "skill_path": skill_path,
-            "version": match.group(2)
+            "version": version
         }
 
     def convert_protected_slug(self, slug: str) -> str:
@@ -124,8 +132,12 @@ class MonitorPublisher:
 
     def publish_skill(self, skill_name: str, version: str, skill_path: str):
         """发布技能"""
+        if self.published_versions_store.is_published(skill_name, version):
+            self.logger.info(f"技能 {skill_name} {version} 已发布，跳过")
+            return
         self.logger.info(f"发布技能: {skill_name} {version} (路径: {skill_path})")
         try:
             self.skill_publisher.publish(skill_name, version, skill_path)
+            self.published_versions_store.mark_published(skill_name, version)
         except Exception as e:
             self.logger.error(f"发布技能失败: {skill_name} {version} - {str(e)}")

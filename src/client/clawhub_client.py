@@ -2,7 +2,7 @@ import subprocess
 import sys
 from models.models import PublishResponse
 from utils.logger import get_logger
-from utils.retry import retry_with_backoff
+
 
 
 class CLIError(Exception):
@@ -27,6 +27,8 @@ class ClawHubClient:
                 [self.cli_name, "-V"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 shell=True
             )
             if result.returncode == 0:
@@ -50,6 +52,8 @@ class ClawHubClient:
                 [self.cli_name, "whoami"],
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 shell=True
             )
             if result.returncode == 0:
@@ -63,17 +67,34 @@ class ClawHubClient:
             self.logger.error(f"检查登录状态失败: {str(e)}")
             return False
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
+
     def publish_skill(
         self,
         skill_path: str,
         slug: str,
         display_name: str,
         version: str,
-        changelog: str = ""
+        changelog: str = "",
+        owner: str = ""
     ) -> PublishResponse:
         """发布技能"""
-        self.logger.info(f"发布技能: {slug} {version}")
+        self.logger.info(f"========== 开始发布技能 ==========")
+        self.logger.info(f"技能名称 (slug): {slug}")
+        self.logger.info(f"显示名称 (display_name): {display_name}")
+        self.logger.info(f"版本号 (version): {version}")
+        self.logger.info(f"更新日志 (changelog): {changelog}")
+        self.logger.info(f"发布者 (owner): {owner if owner else '默认'}")
+        self.logger.info(f"技能路径 (skill_path): {skill_path}")
+
+        # 检查版本号是否包含 v
+        if 'v' in version.lower():
+            self.logger.error(f"=========================================")
+            self.logger.error(f"❌ 版本号格式错误！")
+            self.logger.error(f"版本号包含非法字符 'v': {version}")
+            self.logger.error(f"版本号应该是纯数字格式，如: 0.0.1, 1.0.0, 2.3.4")
+            self.logger.error(f"ClawHub CLI 会自动添加 'v' 前缀，所以这里不应该包含 'v'")
+            self.logger.error(f"=========================================")
+            raise CLIError(f"版本号包含非法字符 'v': {version}。版本号应该是纯数字格式，如: 0.0.1, 1.0.0。ClawHub CLI 会自动添加 'v' 前缀，所以这里不应该包含 'v'")
 
         # 构建命令
         cmd = [
@@ -87,7 +108,12 @@ class ClawHubClient:
         if changelog:
             cmd.extend(["--changelog", changelog])
 
-        self.logger.info(f"执行命令: {' '.join(cmd)}")
+        if owner:
+            cmd.extend(["--owner", owner])
+
+        self.logger.info(f"========== 执行 ClawHub CLI 命令 ==========")
+        self.logger.info(f"完整命令: {' '.join(cmd)}")
+        self.logger.info(f"=========================================")
 
         try:
             # 修复 Windows 控制台编码问题
@@ -98,12 +124,20 @@ class ClawHubClient:
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding='utf-8',
+                errors='replace',
                 shell=True
             )
 
+            self.logger.info(f"========== ClawHub CLI 命令执行结果 ==========")
+            self.logger.info(f"返回码 (returncode): {result.returncode}")
+            self.logger.info(f"标准输出 (stdout): {result.stdout if result.stdout else '(空)'}")
+            self.logger.info(f"标准错误 (stderr): {result.stderr if result.stderr else '(空)'}")
+            self.logger.info(f"=========================================")
+
             # 检查返回码
             if result.returncode == 0:
-                self.logger.info(f"技能发布成功: {slug} {version}")
+                self.logger.info(f"✓ 技能发布成功: {slug} {version}")
                 # 尝试从输出中提取访问链接
                 output = result.stdout
                 if "https://clawhub.ai/skills/" in output:

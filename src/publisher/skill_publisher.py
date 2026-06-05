@@ -9,7 +9,7 @@ from models.models import PublishPayload, PublishResponse
 from client.clawhub_client import ClawHubClient, CLIError
 from client.github_client import GitHubClient
 from utils.logger import get_logger
-from utils.retry import retry_with_backoff
+
 
 
 class PublishError(Exception):
@@ -25,9 +25,10 @@ class PublishError(Exception):
 class SkillPublisher:
     """技能发布器"""
 
-    def __init__(self, clawhub_client: ClawHubClient, github_client: GitHubClient):
+    def __init__(self, clawhub_client: ClawHubClient, github_client: GitHubClient, clawhub_config=None):
         self.clawhub_client = clawhub_client
         self.github_client = github_client
+        self.clawhub_config = clawhub_config
         self.logger = get_logger(__name__)
         self.temp_dir = None
 
@@ -85,7 +86,6 @@ class SkillPublisher:
         # 如果没有找到，使用 skill_name
         return skill_path.split("/")[-1]
 
-    @retry_with_backoff(max_retries=3, base_delay=1.0)
     def publish(self, skill_name: str, version: str, skill_path: str) -> PublishResponse:
         """发布技能"""
         try:
@@ -96,18 +96,15 @@ class SkillPublisher:
             display_name = self.extract_display_name(skill_path)
             self.logger.info(f"显示名称: {display_name}")
 
-            # 去掉版本号中的 v 前缀（ClawHub CLI 会自动添加 v 前缀）
-            if version.startswith('v'):
-                version = version[1:]
-            self.logger.info(f"版本号（去除前缀后）: {version}")
-
             # 使用 CLI 发布
+            owner = self.clawhub_config.owner if self.clawhub_config else ""
             response = self.clawhub_client.publish_skill(
                 skill_path=local_path,
                 slug=skill_name,
                 display_name=display_name,
                 version=version,
-                changelog=f"Release {version}"
+                changelog=f"Release {version}",
+                owner=owner
             )
 
             self.logger.info(f"技能发布成功: {skill_name} {version}")

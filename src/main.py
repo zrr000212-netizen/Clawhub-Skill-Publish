@@ -39,12 +39,12 @@ def main():
         skill_publisher = SkillPublisher(clawhub_client, github_client)
 
         if app_config.mode == "batch":
-            batch_publisher = BatchPublisher(github_client, clawhub_client)
+            batch_publisher = BatchPublisher(github_client, clawhub_client, app_config.clawhub)
             skills = batch_publisher.scan_skills()
             result = batch_publisher.publish_skills(skills)
             logger.info(f"批量发布结果: 成功 {result.success} 个，失败 {result.failed} 个")
         elif app_config.mode == "monitor":
-            monitor_publisher = MonitorPublisher(github_client, clawhub_client)
+            monitor_publisher = MonitorPublisher(github_client, clawhub_client, app_config.clawhub)
             monitor_publisher.monitor_commits()
         else:
             logger.error(f"不支持的发布模式: {app_config.mode}")

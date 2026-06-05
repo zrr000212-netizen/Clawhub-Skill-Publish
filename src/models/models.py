@@ -7,7 +7,9 @@ from datetime import datetime
 class ClawHubConfig:
     """ClawHub 配置"""
     # CLI 模式下不需要 API Key，使用 OAuth 认证
-    pass
+    # 发布者句柄（可选）：指定skill发布到哪个组织或用户下
+    # 例如: "your-org-handle" 或 "your-username"
+    owner: Optional[str] = None
 
 
 @dataclass

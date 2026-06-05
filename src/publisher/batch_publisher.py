@@ -8,10 +8,10 @@ from utils.logger import get_logger
 class BatchPublisher:
     """批量发布器"""
 
-    def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient):
+    def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient, clawhub_config=None):
         self.github_client = github_client
         self.clawhub_client = clawhub_client
-        self.skill_publisher = SkillPublisher(clawhub_client, github_client)
+        self.skill_publisher = SkillPublisher(clawhub_client, github_client, clawhub_config)
         self.logger = get_logger(__name__)
 
     def scan_skills(self) -> list[SkillInfo]:
