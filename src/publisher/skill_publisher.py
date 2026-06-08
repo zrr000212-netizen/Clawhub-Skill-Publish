@@ -86,24 +86,24 @@ class SkillPublisher:
         # 如果没有找到，使用 skill_name
         return skill_path.split("/")[-1]
 
-    def publish(self, skill_name: str, version: str, skill_path: str) -> PublishResponse:
+    def publish(self, skill_name: str, version: str, skill_path: str, changelog: str = "") -> PublishResponse:
         """发布技能"""
         try:
-            # 下载技能到本地
             local_path = self.download_skill(skill_path)
 
-            # 提取显示名称
             display_name = self.extract_display_name(skill_path)
             self.logger.info(f"显示名称: {display_name}")
 
-            # 使用 CLI 发布
+            if not changelog:
+                changelog = f"Release {version}"
+
             owner = self.clawhub_config.owner if self.clawhub_config else ""
             response = self.clawhub_client.publish_skill(
                 skill_path=local_path,
                 slug=skill_name,
                 display_name=display_name,
                 version=version,
-                changelog=f"Release {version}",
+                changelog=changelog,
                 owner=owner
             )
 

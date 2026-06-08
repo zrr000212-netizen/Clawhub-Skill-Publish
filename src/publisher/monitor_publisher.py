@@ -14,13 +14,18 @@ class MonitorPublisher:
 
     COMMIT_MESSAGE_PATTERN = re.compile(r"update skill: (?:skills/)?(?:\w+/)*(\S+) (v\d+\.\d+\.\d+)")
 
-    def __init__(self, github_client: GitHubClient, clawhub_client: ClawHubClient, clawhub_config=None):
+    def __init__(self, github_client: GitHubClient, clawhub_client, clawhub_config=None, ai_changelog_generator=None):
         self.github_client = github_client
         self.clawhub_client = clawhub_client
         self.skill_publisher = SkillPublisher(clawhub_client, github_client, clawhub_config)
+        self.ai_changelog_generator = ai_changelog_generator
         self.logger = get_logger(__name__)
         self.last_commit_sha: Optional[str] = None
         self.published_versions_store = PublishedVersionsStore()
+        if self.ai_changelog_generator:
+            self.logger.info("AI Changelog 生成器已启用")
+        else:
+            self.logger.info("AI Changelog 生成器未启用，使用传统 changelog 生成方式")
 
     def monitor_commits(self, interval: int = 60):
         """监控提交记录"""
@@ -50,7 +55,8 @@ class MonitorPublisher:
 
         try:
             skill_info = self.extract_skill_info(commit_info.message)
-            self.publish_skill(skill_info["skill_name"], skill_info["version"], skill_info["skill_path"])
+            changelog = self.generate_changelog(commit_info.sha, commit_info.message, skill_info["version"])
+            self.publish_skill(skill_info["skill_name"], skill_info["version"], skill_info["skill_path"], changelog)
         except ValueError as e:
             self.logger.warning(f"提交消息格式不满足版本发布条件: {str(e)}")
 
@@ -130,14 +136,30 @@ class MonitorPublisher:
             self.logger.debug(f"检查目录 {path} 失败: {str(e)}")
         return False
 
-    def publish_skill(self, skill_name: str, version: str, skill_path: str):
+    def generate_changelog(self, commit_sha: str, commit_message: str, version: str) -> str:
+        """生成 changelog（AI 优先，回退到 commit message）"""
+        if self.ai_changelog_generator:
+            try:
+                structured = self.ai_changelog_generator.generate_changelog(
+                    commit_sha, commit_message, version
+                )
+                self.logger.info(f"changelog 来源: {structured.source} | {structured.raw_text}")
+                return structured.raw_text
+            except Exception as e:
+                self.logger.error(f"AI changelog 生成异常，回退到默认方式: {str(e)}")
+
+        default_changelog = f"Release {version}"
+        self.logger.info(f"changelog 来源: default_template | {default_changelog}")
+        return default_changelog
+
+    def publish_skill(self, skill_name: str, version: str, skill_path: str, changelog: str = ""):
         """发布技能"""
         if self.published_versions_store.is_published(skill_name, version):
             self.logger.info(f"技能 {skill_name} {version} 已发布，跳过")
             return
         self.logger.info(f"发布技能: {skill_name} {version} (路径: {skill_path})")
         try:
-            self.skill_publisher.publish(skill_name, version, skill_path)
+            self.skill_publisher.publish(skill_name, version, skill_path, changelog=changelog)
             self.published_versions_store.mark_published(skill_name, version)
         except Exception as e:
             self.logger.error(f"发布技能失败: {skill_name} {version} - {str(e)}")
