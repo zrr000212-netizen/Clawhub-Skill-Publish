@@ -64,7 +64,9 @@ class SkillPublisher:
             self.logger.warning(f"下载目录 {path} 失败: {str(e)}")
 
     def _download_file_content(self, url: str) -> bytes:
-        """下载文件内容"""
+        """下载文件内容（自动使用 GitHub 镜像）"""
+        if "raw.githubusercontent.com" in url:
+            url = url.replace("https://raw.githubusercontent.com", "https://ghfast.top/https://raw.githubusercontent.com")
         response = requests.get(url, timeout=30)
         response.raise_for_status()
         return response.content
@@ -74,7 +76,7 @@ class SkillPublisher:
         try:
             items = self.github_client.get_files(skill_path)
             for item in items:
-                if item["type"] == "file" and item["name"] == "skill.md":
+                if item["type"] == "file" and item["name"].lower() == "skill.md":
                     content = self._download_file_content(item["download_url"])
                     text = content.decode("utf-8")
                     # 提取 displayName
@@ -86,6 +88,142 @@ class SkillPublisher:
         # 如果没有找到，使用 skill_name
         return skill_path.split("/")[-1]
 
+    def _read_skill_md(self, skill_path: str) -> str:
+        """从 GitHub 读取 SKILL.md 内容"""
+        try:
+            items = self.github_client.get_files(skill_path)
+            for item in items:
+                if item["type"] == "file" and item["name"].lower() == "skill.md":
+                    content = self._download_file_content(item["download_url"])
+                    return content.decode("utf-8")
+        except Exception as e:
+            self.logger.warning(f"读取 SKILL.md 失败: {str(e)}")
+        return ""
+
+    def extract_auto_changelog(self, skill_name: str, version: str, skill_path: str) -> str:
+        """从 SKILL.md 自动提取功能概括，生成 '- ' 条目式 changelog (changelogSource=auto)
+
+        生成格式示例 (与 ClawHub v1.0.0 auto 格式一致):
+        - Initial release of my-skill.
+        - Supports feature A, feature B, and feature C.
+        - Easy usage: run command X to do Y.
+        - Outputs results directly to the terminal.
+        """
+        text = self._read_skill_md(skill_path)
+        if not text:
+            return f"- Release {version} of {skill_name}."
+
+        import re
+        lines = text.split("\n")
+        changelog_items = []
+
+        # 1) 解析 frontmatter
+        fm = {}
+        in_fm = False
+        for line in lines:
+            if line.strip() == "---":
+                if in_fm:
+                    break
+                in_fm = True
+                continue
+            if in_fm:
+                m = re.match(r'^(\w[\w-]*):\s*(.*)', line)
+                if m:
+                    key, val = m.group(1), m.group(2).strip()
+                    if val.startswith('[') and val.endswith(']'):
+                        fm[key] = [x.strip().strip('"').strip("'") for x in val[1:-1].split(',') if x.strip()]
+                    elif val and val not in ('|', '>'):
+                        fm[key] = val.strip('"').strip("'")
+                    else:
+                        fm[key] = []
+
+        # 2) 从 description 提取核心功能（整段作为一条，不再拆分）
+        desc = fm.get("description", "")
+        if desc:
+            # 去掉触发词/前置/不适用等非功能描述的句子
+            sentences = re.split(r'(?<=[.。；;])\s+', desc)
+            functional = []
+            for s in sentences:
+                s = s.strip()
+                if not s or len(s) < 5:
+                    continue
+                if re.match(r'^(触发|前置|不适用|NOT|Requires?\s)', s, re.IGNORECASE):
+                    continue
+                functional.append(s)
+            if functional:
+                # 合并为一条 "Supports ..." 概括
+                combined = ' '.join(functional)
+                if not combined.endswith('.'):
+                    combined += '.'
+                changelog_items.append(combined)
+
+        # 3) 从正文 ## 章节标题提取关键功能点（英文风格）
+        # 中英文章节名映射
+        heading_map = {
+            "核心命令": "core commands", "核心操作": "core operations",
+            "完整执行流程": "complete execution workflow", "执行流程": "execution workflow",
+            "部署报告模板": "deployment report template",
+            "清理临时文件": "cleanup of temporary files",
+            "陷阱速查": "pitfalls quick reference", "常见错误速查": "common errors reference",
+            "环境变量清单": "environment variables reference",
+            "CCE 部署 YAML 模板": "CCE deployment YAML template",
+            "CCE 连接参数": "CCE connection parameters",
+            "SWR 登录信息": "SWR login configuration",
+            "适用场景": "use case scenarios",
+            "项目参数": "project parameters",
+            "输出格式": "output format", "验证方法": "verification method",
+        }
+        skip_headings = {"概述", "Overview", "前置条件", "Prerequisites", "参考文档",
+                         "References", "注意事项", "Notes", "Pitfalls", "最佳实践",
+                         "Best Practices", "See Also", "Related", "Gotchas"}
+
+        body_start = False
+        for line in lines:
+            if line.strip() == "---":
+                body_start = not body_start
+                continue
+            if body_start:
+                continue
+            m = re.match(r'^##\s+(.+)', line)
+            if m:
+                heading = m.group(1).strip()
+                if heading in skip_headings:
+                    continue
+                # 查找英文映射
+                en = heading_map.get(heading)
+                if not en:
+                    # 去掉括号内容，取简短英文
+                    short = heading.split("（")[0].split("(")[0].strip()
+                    # 如果是中文标题，跳过（避免 "Provides 中文 functionality"）
+                    if re.search(r'[\u4e00-\u9fff]', short):
+                        continue
+                    en = short.lower()
+                if not any(en in item for item in changelog_items):
+                    changelog_items.append(f"Provides {en}.")
+
+        # 4) 限制条目数（最多6条），组装
+        if not changelog_items:
+            return f"- Release {version} of {skill_name}."
+
+        items = changelog_items[:6]
+        # 首条用 "Initial release" 或 "Update" 语气
+        first_body = items[0].lstrip('- ')
+        if version == "1.0.0":
+            items[0] = f"- Initial release of {skill_name}."
+        elif version.endswith(".0"):
+            items[0] = f"- Update of {skill_name}: {first_body}"
+        else:
+            items[0] = f"- Update {skill_name}: {first_body}"
+
+        # 确保每条以 "- " 开头
+        result = []
+        for item in items:
+            if not item.startswith("- "):
+                item = f"- {item}"
+            result.append(item)
+
+        return "\n".join(result)
+
     def publish(self, skill_name: str, version: str, skill_path: str, changelog: str = "") -> PublishResponse:
         """发布技能"""
         try:
@@ -95,7 +233,8 @@ class SkillPublisher:
             self.logger.info(f"显示名称: {display_name}")
 
             if not changelog:
-                changelog = f"Release {version}"
+                changelog = self.extract_auto_changelog(skill_name, version, skill_path)
+                self.logger.info(f"自动生成 changelog (source=auto):\n{changelog}")
 
             owner = self.clawhub_config.owner if self.clawhub_config else ""
             response = self.clawhub_client.publish_skill(

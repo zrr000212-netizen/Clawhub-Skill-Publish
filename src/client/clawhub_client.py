@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import shutil
 from models.models import PublishResponse
 from utils.logger import get_logger
 
@@ -17,7 +18,7 @@ class ClawHubClient:
     """ClawHub CLI 客户端"""
 
     def __init__(self):
-        self.cli_name = "clawhub"
+        self.cli_name = shutil.which("clawhub") or "clawhub"
         self.logger = get_logger(__name__)
 
     def check_cli_installed(self) -> bool:
@@ -29,7 +30,7 @@ class ClawHubClient:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=True
+                shell=False
             )
             if result.returncode == 0:
                 version = result.stdout.strip()
@@ -54,7 +55,7 @@ class ClawHubClient:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=True
+                shell=False
             )
             if result.returncode == 0:
                 username = result.stdout.strip().replace("√ ", "")
@@ -126,7 +127,7 @@ class ClawHubClient:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=True
+                shell=False
             )
 
             self.logger.info(f"========== ClawHub CLI 命令执行结果 ==========")

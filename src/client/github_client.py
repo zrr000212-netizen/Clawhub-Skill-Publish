@@ -72,6 +72,26 @@ class GitHubClient:
         except requests.exceptions.RequestException as e:
             raise GitHubError(0, f"请求失败: {str(e)}")
 
+    @retry_with_backoff(max_retries=3, base_delay=1.0)
+    def get_file_content(self, path: str) -> str:
+        """获取文件内容"""
+        url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
+        headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Accept": "application/vnd.github.v3.raw"
+        }
+        params = {
+            "ref": self.branch
+        }
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=30)
+            self.handle_error(response)
+            return response.text
+        except requests.exceptions.Timeout:
+            raise GitHubError(0, "请求超时")
+        except requests.exceptions.RequestException as e:
+            raise GitHubError(0, f"请求失败: {str(e)}")
+
     def handle_error(self, response: requests.Response):
         """处理错误"""
         if response.status_code == 200:

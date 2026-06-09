@@ -55,7 +55,8 @@ class MonitorPublisher:
 
         try:
             skill_info = self.extract_skill_info(commit_info.message)
-            changelog = self.generate_changelog(commit_info.sha, commit_info.message, skill_info["version"])
+            changelog = self.generate_changelog(commit_info.sha, commit_info.message, skill_info["version"],
+                                                skill_name=skill_info["skill_name"], skill_path=skill_info["skill_path"])
             self.publish_skill(skill_info["skill_name"], skill_info["version"], skill_info["skill_path"], changelog)
         except ValueError as e:
             self.logger.warning(f"提交消息格式不满足版本发布条件: {str(e)}")
@@ -130,14 +131,14 @@ class MonitorPublisher:
         try:
             items = self.github_client.get_files(path)
             for item in items:
-                if item["type"] == "file" and item["name"] == "skill.md":
+                if item["type"] == "file" and item["name"].lower() == "skill.md":
                     return True
         except Exception as e:
             self.logger.debug(f"检查目录 {path} 失败: {str(e)}")
         return False
 
-    def generate_changelog(self, commit_sha: str, commit_message: str, version: str) -> str:
-        """生成 changelog（AI 优先，回退到 commit message）"""
+    def generate_changelog(self, commit_sha: str, commit_message: str, version: str, skill_name: str = "", skill_path: str = "") -> str:
+        """生成 changelog（AI 优先，回退到 auto 从 SKILL.md 提取）"""
         if self.ai_changelog_generator:
             try:
                 structured = self.ai_changelog_generator.generate_changelog(
@@ -148,7 +149,13 @@ class MonitorPublisher:
             except Exception as e:
                 self.logger.error(f"AI changelog 生成异常，回退到默认方式: {str(e)}")
 
-        default_changelog = f"Release {version}"
+        # 从 SKILL.md 自动提取功能概括生成条目式 changelog
+        if skill_name and skill_path:
+            auto_changelog = self.skill_publisher.extract_auto_changelog(skill_name, version, skill_path)
+            self.logger.info(f"changelog 来源: auto | {auto_changelog[:80]}...")
+            return auto_changelog
+
+        default_changelog = f"- Release {version} of {skill_name}." if skill_name else f"- Release {version}."
         self.logger.info(f"changelog 来源: default_template | {default_changelog}")
         return default_changelog
 

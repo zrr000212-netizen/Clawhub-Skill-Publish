@@ -12,12 +12,11 @@ from utils.logger import get_logger
 
 def main():
     """主程序入口"""
+    logger = get_logger(__name__)
     try:
-        config_path = "config.yaml"
+        config_path = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
         config_manager = ConfigManager(config_path)
         app_config = config_manager.get_app_config()
-
-        logger = get_logger(__name__, app_config.log_level)
         logger.info("ClawHub Skill Publisher 启动")
 
         clawhub_client = ClawHubClient()

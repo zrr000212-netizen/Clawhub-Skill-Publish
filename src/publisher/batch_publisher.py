@@ -1,6 +1,7 @@
 import re
 from models.models import SkillInfo, PublishResult
 from client.github_client import GitHubClient
+from client.clawhub_client import ClawHubClient
 from publisher.skill_publisher import SkillPublisher
 from utils.logger import get_logger
 
@@ -25,8 +26,8 @@ class BatchPublisher:
         try:
             files = self.github_client.get_files(path)
             for file in files:
-                if file["type"] == "file" and file["name"] == "skill.md":
-                    skill_path = file["path"].replace("/skill.md", "")
+                if file["type"] == "file" and file["name"].lower() == "skill.md":
+                    skill_path = file["path"].replace("/" + file["name"], "")
                     skill_name = self.extract_skill_name(skill_path)
                     skills.append(SkillInfo(
                         skill_name=skill_name,

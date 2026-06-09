@@ -191,7 +191,7 @@ class AIChangelogGenerator:
                     source="commit_message",
                 )
 
-        default_summary = f"Release {version}" if version else "Release"
+        default_summary = f"- Release {version} of skill." if version else "- Release."
         return StructuredChangelog(
             change_type="chore",
             summary=default_summary,
