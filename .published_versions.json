@@ -21,8 +21,8 @@
       "commit_sha": "8d52b1445ec99ddb7df52fc3ca399a4ff284487f"
     },
     "huawei-cloud-find-skills": {
-      "version": "0.0.5",
-      "commit_sha": "a65fb04dd40d56c0d1729cda6aa8b1d110863a5b"
+      "version": "0.0.6",
+      "commit_sha": "4a01c1ab657dfa0571e2beaf96b94b057ff56204"
     },
     "huawei-cloud-network-query": {
       "version": "0.0.1",
