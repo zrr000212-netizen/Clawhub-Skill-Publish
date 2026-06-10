@@ -55,6 +55,10 @@
     "huawei-cloud-ces-ecs-monitoring": {
       "version": "0.0.1",
       "commit_sha": "474224defcf44c0108222185e727fa067034bff9"
+    },
+    "huawei-cloud-flexus-l-server-ops": {
+      "version": "0.0.1",
+      "commit_sha": "f047d6fba56ece29b3811773898039162c1a08a6"
     }
   }
 }
