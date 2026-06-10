@@ -13,7 +13,7 @@
       "commit_sha": "2446e76ade62c70459127ff64c377bdc2b87f4d2"
     },
     "huawei-cloud-ascend-op-mfu-calculator": {
-      "version": "0.0.1",
+      "version": "0.0.2",
       "commit_sha": "6ab774b9ff34184f7620daf8717e7dc7d32c72c3"
     },
     "huawei-cloud-ascend-profiler-db-explorer": {
