@@ -61,8 +61,8 @@
       "commit_sha": "c6d92bfbddbde6ff82959bd7d68f6724991e0cb0"
     },
     "huawei-cloud-flexus-l-server-hermes-deployment": {
-      "version": "0.0.2",
-      "commit_sha": "f8a19d0c64cfd34dd677440030579a12a0938610"
+      "version": "0.0.3",
+      "commit_sha": "e5cd518144645157ef1a0a06fad7d85c35529e23"
     }
   }
 }
