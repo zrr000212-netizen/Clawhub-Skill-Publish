@@ -49,8 +49,8 @@
       "commit_sha": "221a60ed2643d9d7edbda81b5659ae1f221cafcf"
     },
     "huawei-cloud-flexus-l-server-openclaw-deployment": {
-      "version": "0.0.3",
-      "commit_sha": "dcfa340df33da75bb2b8673e5d1a1267454105ab"
+      "version": "0.0.4",
+      "commit_sha": "1f16f04077c4314ca2af1a696528dda7bec9d7fb"
     },
     "huawei-cloud-ces-ecs-monitoring": {
       "version": "0.0.1",
