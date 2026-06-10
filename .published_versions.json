@@ -43,6 +43,10 @@
     "huawei-cloud-sac-yolo": {
       "version": "0.0.1",
       "commit_sha": "758004999d9fc28ddccd25dd4f9e68222064709f"
+    },
+    "huawei-cloud-flexus-l-server-scripts-excute": {
+      "version": "0.0.1",
+      "commit_sha": "221a60ed2643d9d7edbda81b5659ae1f221cafcf"
     }
   }
 }
