@@ -100,111 +100,117 @@ class SkillPublisher:
             self.logger.warning(f"读取 SKILL.md 失败: {str(e)}")
         return ""
 
-    def extract_auto_changelog(self, skill_name: str, version: str, skill_path: str) -> str:
-        """从 SKILL.md 自动提取功能概括，生成 '- ' 条目式 changelog (changelogSource=auto)
+    def extract_auto_changelog(self, skill_name: str, version: str, skill_path: str, ai_summary: str = "") -> str:
+        """从 SKILL.md 自动提取功能概括，生成 '- ' 条目式 changelog
 
+        如果提供 ai_summary，将其作为首条摘要注入（AI 摘要 + SKILL.md 功能点）。
         生成格式示例 (与 ClawHub v1.0.0 auto 格式一致):
         - Initial release of my-skill.
         - Supports feature A, feature B, and feature C.
         - Easy usage: run command X to do Y.
         - Outputs results directly to the terminal.
         """
-        text = self._read_skill_md(skill_path)
-        if not text:
-            return f"- Release {version} of {skill_name}."
-
         import re
-        lines = text.split("\n")
+
+        text = self._read_skill_md(skill_path)
         changelog_items = []
 
-        # 1) 解析 frontmatter
-        fm = {}
-        in_fm = False
-        for line in lines:
-            if line.strip() == "---":
+        # 0) AI 摘要作为首条（如果提供）
+        if ai_summary:
+            # 清理 AI 摘要：去掉 conventional commit 前缀 (chore:/feat:/fix:/docs: 等)
+            cleaned = re.sub(r'^(chore|feat|fix|docs|refactor|style|test|build|ci|perf)(\([^)]*\))?:\s*', '', ai_summary).strip()
+            if cleaned:
+                if not cleaned.endswith('.'):
+                    cleaned += '.'
+                changelog_items.append(cleaned)
+
+        if text:
+            lines = text.split("\n")
+
+            # 1) 解析 frontmatter
+            fm = {}
+            in_fm = False
+            for line in lines:
+                if line.strip() == "---":
+                    if in_fm:
+                        break
+                    in_fm = True
+                    continue
                 if in_fm:
-                    break
-                in_fm = True
-                continue
-            if in_fm:
-                m = re.match(r'^(\w[\w-]*):\s*(.*)', line)
+                    m = re.match(r'^(\w[\w-]*):\s*(.*)', line)
+                    if m:
+                        key, val = m.group(1), m.group(2).strip()
+                        if val.startswith('[') and val.endswith(']'):
+                            fm[key] = [x.strip().strip('"').strip("'") for x in val[1:-1].split(',') if x.strip()]
+                        elif val and val not in ('|', '>'):
+                            fm[key] = val.strip('"').strip("'")
+                        else:
+                            fm[key] = []
+
+            # 2) 从 description 提取核心功能（仅在没有 AI 摘要时，避免重复）
+            if not ai_summary:
+                desc = fm.get("description", "")
+                if desc:
+                    sentences = re.split(r'(?<=[.。；;])\s+', desc)
+                    functional = []
+                    for s in sentences:
+                        s = s.strip()
+                        if not s or len(s) < 5:
+                            continue
+                        if re.match(r'^(触发|前置|不适用|NOT|Requires?\s)', s, re.IGNORECASE):
+                            continue
+                        functional.append(s)
+                    if functional:
+                        combined = ' '.join(functional)
+                        if not combined.endswith('.'):
+                            combined += '.'
+                        changelog_items.append(combined)
+
+            # 3) 从正文 ## 章节标题提取关键功能点（英文风格）
+            heading_map = {
+                "核心命令": "core commands", "核心操作": "core operations",
+                "完整执行流程": "complete execution workflow", "执行流程": "execution workflow",
+                "部署报告模板": "deployment report template",
+                "清理临时文件": "cleanup of temporary files",
+                "陷阱速查": "pitfalls quick reference", "常见错误速查": "common errors reference",
+                "环境变量清单": "environment variables reference",
+                "CCE 部署 YAML 模板": "CCE deployment YAML template",
+                "CCE 连接参数": "CCE connection parameters",
+                "SWR 登录信息": "SWR login configuration",
+                "适用场景": "use case scenarios",
+                "项目参数": "project parameters",
+                "输出格式": "output format", "验证方法": "verification method",
+            }
+            skip_headings = {"概述", "Overview", "前置条件", "Prerequisites", "参考文档",
+                             "References", "注意事项", "Notes", "Pitfalls", "最佳实践",
+                             "Best Practices", "See Also", "Related", "Gotchas"}
+
+            body_start = False
+            for line in lines:
+                if line.strip() == "---":
+                    body_start = not body_start
+                    continue
+                if body_start:
+                    continue
+                m = re.match(r'^##\s+(.+)', line)
                 if m:
-                    key, val = m.group(1), m.group(2).strip()
-                    if val.startswith('[') and val.endswith(']'):
-                        fm[key] = [x.strip().strip('"').strip("'") for x in val[1:-1].split(',') if x.strip()]
-                    elif val and val not in ('|', '>'):
-                        fm[key] = val.strip('"').strip("'")
-                    else:
-                        fm[key] = []
-
-        # 2) 从 description 提取核心功能（整段作为一条，不再拆分）
-        desc = fm.get("description", "")
-        if desc:
-            # 去掉触发词/前置/不适用等非功能描述的句子
-            sentences = re.split(r'(?<=[.。；;])\s+', desc)
-            functional = []
-            for s in sentences:
-                s = s.strip()
-                if not s or len(s) < 5:
-                    continue
-                if re.match(r'^(触发|前置|不适用|NOT|Requires?\s)', s, re.IGNORECASE):
-                    continue
-                functional.append(s)
-            if functional:
-                # 合并为一条 "Supports ..." 概括
-                combined = ' '.join(functional)
-                if not combined.endswith('.'):
-                    combined += '.'
-                changelog_items.append(combined)
-
-        # 3) 从正文 ## 章节标题提取关键功能点（英文风格）
-        # 中英文章节名映射
-        heading_map = {
-            "核心命令": "core commands", "核心操作": "core operations",
-            "完整执行流程": "complete execution workflow", "执行流程": "execution workflow",
-            "部署报告模板": "deployment report template",
-            "清理临时文件": "cleanup of temporary files",
-            "陷阱速查": "pitfalls quick reference", "常见错误速查": "common errors reference",
-            "环境变量清单": "environment variables reference",
-            "CCE 部署 YAML 模板": "CCE deployment YAML template",
-            "CCE 连接参数": "CCE connection parameters",
-            "SWR 登录信息": "SWR login configuration",
-            "适用场景": "use case scenarios",
-            "项目参数": "project parameters",
-            "输出格式": "output format", "验证方法": "verification method",
-        }
-        skip_headings = {"概述", "Overview", "前置条件", "Prerequisites", "参考文档",
-                         "References", "注意事项", "Notes", "Pitfalls", "最佳实践",
-                         "Best Practices", "See Also", "Related", "Gotchas"}
-
-        body_start = False
-        for line in lines:
-            if line.strip() == "---":
-                body_start = not body_start
-                continue
-            if body_start:
-                continue
-            m = re.match(r'^##\s+(.+)', line)
-            if m:
-                heading = m.group(1).strip()
-                if heading in skip_headings:
-                    continue
-                # 查找英文映射
-                en = heading_map.get(heading)
-                if not en:
-                    # 去掉括号内容，取简短英文
-                    short = heading.split("（")[0].split("(")[0].strip()
-                    # 如果是中文标题，跳过（避免 "Provides 中文 functionality"）
-                    if re.search(r'[\u4e00-\u9fff]', short):
+                    heading = m.group(1).strip()
+                    if heading in skip_headings:
                         continue
-                    en = short.lower()
-                if not any(en in item for item in changelog_items):
-                    changelog_items.append(f"Provides {en}.")
+                    en = heading_map.get(heading)
+                    if not en:
+                        short = heading.split("（")[0].split("(")[0].strip()
+                        if re.search(r'[\u4e00-\u9fff]', short):
+                            continue
+                        en = short.lower()
+                    if not any(en in item for item in changelog_items):
+                        changelog_items.append(f"Provides {en}.")
 
-        # 4) 限制条目数（最多6条），组装
+        # 4) 兜底
         if not changelog_items:
             return f"- Release {version} of {skill_name}."
 
+        # 5) 限制条目数（最多6条），组装
         items = changelog_items[:6]
         # 首条用 "Initial release" 或 "Update" 语气
         first_body = items[0].lstrip('- ')

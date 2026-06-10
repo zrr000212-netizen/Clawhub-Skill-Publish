@@ -1,8 +1,13 @@
 import subprocess
 import sys
+import os
 import shutil
+import requests
 from models.models import PublishResponse
 from utils.logger import get_logger
+
+
+CLAWHUB_API_BASE = "https://clawhub.ai/api/v1"
 
 
 
@@ -17,20 +22,33 @@ class CLIError(Exception):
 class ClawHubClient:
     """ClawHub CLI 客户端"""
 
+    NODE_V22_BIN = "/opt/nvm/versions/node/v22.22.3/bin"
+
     def __init__(self):
         self.cli_name = shutil.which("clawhub") or "clawhub"
         self.logger = get_logger(__name__)
+        self._env = self._build_env()
+
+    def _build_env(self) -> dict:
+        """构建子进程环境变量，确保 Node v22 在 PATH 中"""
+        env = os.environ.copy()
+        path = env.get("PATH", "")
+        if self.NODE_V22_BIN not in path:
+            env["PATH"] = f"{self.NODE_V22_BIN}:{path}"
+        return env
 
     def check_cli_installed(self) -> bool:
         """检查 CLI 是否已安装"""
         try:
+            self.cli_name = shutil.which("clawhub", path=self._env.get("PATH")) or "clawhub"
             result = subprocess.run(
                 [self.cli_name, "-V"],
                 capture_output=True,
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=False
+                shell=False,
+                env=self._env
             )
             if result.returncode == 0:
                 version = result.stdout.strip()
@@ -55,7 +73,8 @@ class ClawHubClient:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=False
+                shell=False,
+                env=self._env
             )
             if result.returncode == 0:
                 username = result.stdout.strip().replace("√ ", "")
@@ -68,6 +87,30 @@ class ClawHubClient:
             self.logger.error(f"检查登录状态失败: {str(e)}")
             return False
 
+
+    def get_latest_version(self, slug: str, owner: str = "") -> str | None:
+        """查询 ClawHub 上 skill 的最新版本号，不存在返回 None"""
+        try:
+            # 先尝试 owner/slug，再尝试纯 slug
+            slugs = [f"{owner}/{slug}", slug] if owner else [slug]
+            for s in slugs:
+                url = f"{CLAWHUB_API_BASE}/skills/{s}/versions"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    items = resp.json().get("items", [])
+                    if items:
+                        latest = items[0]["version"]
+                        self.logger.info(f"ClawHub 上 {s} 最新版本: v{latest}")
+                        return latest
+                    # skill 存在但无版本（理论上不会）
+                    return None
+                elif resp.status_code == 404:
+                    continue
+            self.logger.info(f"ClawHub 上未找到 skill: {slug}")
+            return None
+        except Exception as e:
+            self.logger.warning(f"查询 ClawHub 版本失败: {str(e)}")
+            return None
 
     def publish_skill(
         self,
@@ -106,8 +149,10 @@ class ClawHubClient:
             "--version", version
         ]
 
-        if changelog:
-            cmd.extend(["--changelog", changelog])
+        # 不传 --changelog，让 ClawHub 自己从 SKILL.md 提取生成
+        # 这样 changelogSource=auto，格式为 '- ' 条目式
+        # if changelog:
+        #     cmd.extend(["--changelog", changelog])
 
         if owner:
             cmd.extend(["--owner", owner])
@@ -127,7 +172,8 @@ class ClawHubClient:
                 text=True,
                 encoding='utf-8',
                 errors='replace',
-                shell=False
+                shell=False,
+                env=self._env
             )
 
             self.logger.info(f"========== ClawHub CLI 命令执行结果 ==========")

@@ -1,4 +1,5 @@
 import sys
+import os
 from config.config_manager import ConfigManager
 from client.github_client import GitHubClient, GitHubError
 from client.clawhub_client import ClawHubClient, CLIError
@@ -7,6 +8,7 @@ from publisher.batch_publisher import BatchPublisher
 from publisher.monitor_publisher import MonitorPublisher
 from ai.llm_client import LLMClient
 from ai.ai_changelog_generator import AIChangelogGenerator
+from utils.published_versions_store import PublishedVersionsStore
 from utils.logger import get_logger
 
 
@@ -18,6 +20,13 @@ def main():
         config_manager = ConfigManager(config_path)
         app_config = config_manager.get_app_config()
         logger.info("ClawHub Skill Publisher 启动")
+
+        repo_dir = os.path.dirname(os.path.abspath(config_path))
+        store = PublishedVersionsStore(
+            store_file=os.path.join(repo_dir, ".published_versions.json"),
+            repo_dir=repo_dir
+        )
+        store.git_pull()
 
         clawhub_client = ClawHubClient()
         if not clawhub_client.check_cli_installed():
@@ -52,7 +61,7 @@ def main():
                 logger.warning(f"AI Changelog 生成器初始化失败，将使用传统方式: {str(e)}")
 
         if app_config.mode == "batch":
-            batch_publisher = BatchPublisher(github_client, clawhub_client, app_config.clawhub)
+            batch_publisher = BatchPublisher(github_client, clawhub_client, app_config.clawhub, store=store)
             skills = batch_publisher.scan_skills()
             result = batch_publisher.publish_skills(skills)
             logger.info(f"批量发布结果: 成功 {result.success} 个，失败 {result.failed} 个")
@@ -60,6 +69,7 @@ def main():
             monitor_publisher = MonitorPublisher(
                 github_client, clawhub_client, app_config.clawhub,
                 ai_changelog_generator=ai_changelog_generator,
+                store=store,
             )
             monitor_publisher.monitor_commits()
         else:

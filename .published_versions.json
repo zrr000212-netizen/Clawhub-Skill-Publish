@@ -1,0 +1,48 @@
+{
+  "skills": {
+    "huawei-cloud-maas-tokens-usage": {
+      "version": "0.0.1",
+      "commit_sha": "b8893fac654d616e2c6cc180ee2feb62cfd9fdea"
+    },
+    "huawei-cloud-ascend-command": {
+      "version": "0.0.1",
+      "commit_sha": "a30dd1970c0e2b157c987c51c065adedf5b7c2a9"
+    },
+    "huawei-cloud-ascend-models-deploy": {
+      "version": "0.0.1",
+      "commit_sha": "2446e76ade62c70459127ff64c377bdc2b87f4d2"
+    },
+    "huawei-cloud-ascend-op-mfu-calculator": {
+      "version": "0.0.1",
+      "commit_sha": "6ab774b9ff34184f7620daf8717e7dc7d32c72c3"
+    },
+    "huawei-cloud-ascend-profiler-db-explorer": {
+      "version": "0.0.1",
+      "commit_sha": "8d52b1445ec99ddb7df52fc3ca399a4ff284487f"
+    },
+    "huawei-cloud-find-skills": {
+      "version": "0.0.3",
+      "commit_sha": "a65fb04dd40d56c0d1729cda6aa8b1d110863a5b"
+    },
+    "huawei-cloud-network-query": {
+      "version": "0.0.1",
+      "commit_sha": "705c5cc7de482044fd306de4aad9f5a1d43a9dad"
+    },
+    "huawei-cloud-iam-query": {
+      "version": "0.0.1",
+      "commit_sha": "705c5cc7de482044fd306de4aad9f5a1d43a9dad"
+    },
+    "huawei-cloud-cce-env-assessment": {
+      "version": "0.0.1",
+      "commit_sha": "9eb1859af7692fcf41fd9e285d4a3ce788826fb7"
+    },
+    "huawei-cloud-sac-new-api": {
+      "version": "0.0.1",
+      "commit_sha": "2fc12ece1619608a9cb05f5251a7beb2fb86dac8"
+    },
+    "huawei-cloud-sac-yolo": {
+      "version": "0.0.1",
+      "commit_sha": "758004999d9fc28ddccd25dd4f9e68222064709f"
+    }
+  }
+}

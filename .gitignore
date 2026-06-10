@@ -37,9 +37,11 @@ env/
 Thumbs.db
 
 # Project specific
+config.yaml
 skill/
 *.zip
 *.json
+!.published_versions.json
 trace.txt
 
 # Logs

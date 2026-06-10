@@ -39,7 +39,10 @@ class StructuredChangelog:
 
     def __post_init__(self):
         if not self.raw_text:
-            if self.scope:
+            # 如果 summary 本身已是条目式（以 "- " 开头），直接使用，不加 conventional commit 前缀
+            if self.summary.startswith("- "):
+                self.raw_text = self.summary
+            elif self.scope:
                 self.raw_text = f"{self.change_type}({self.scope}): {self.summary}"
             else:
                 self.raw_text = f"{self.change_type}: {self.summary}"

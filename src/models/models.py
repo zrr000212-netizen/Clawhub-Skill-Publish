@@ -35,6 +35,7 @@ class SkillInfo:
     skill_name: str
     skill_path: str
     version: str = "0.0.1"
+    commit_sha: str = ""
 
 
 @dataclass
