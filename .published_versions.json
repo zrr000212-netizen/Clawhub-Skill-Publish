@@ -45,8 +45,8 @@
       "commit_sha": "758004999d9fc28ddccd25dd4f9e68222064709f"
     },
     "huawei-cloud-flexus-l-server-scripts-excute": {
-      "version": "0.0.1",
-      "commit_sha": "221a60ed2643d9d7edbda81b5659ae1f221cafcf"
+      "version": "0.0.2",
+      "commit_sha": "7d6c663f3c2775ac66cad5d7c88da52a3b9f0b3c"
     },
     "huawei-cloud-flexus-l-server-openclaw-deployment": {
       "version": "0.0.5",
