@@ -13,7 +13,7 @@ class MonitorPublisher:
     """监控发布器"""
 
     # 支持 add/update，版本号可选（缺省默认 1.0.0）
-    COMMIT_MESSAGE_PATTERN = re.compile(r"(?:add|update) skill: (?:skills/)?(?:\w+/)*(\S+)(?:\s+(v\d+\.\d+\.\d+))?")
+    COMMIT_MESSAGE_PATTERN = re.compile(r"(?:add|update) skill[：:]\s*(?:skills/)?(\S+?)(?:\s+(v\d+\.\d+\.\d+))?(?:\s|$)", re.MULTILINE)
 
     def __init__(self, github_client: GitHubClient, clawhub_client, clawhub_config=None, ai_changelog_generator=None, store: PublishedVersionsStore = None):
         self.github_client = github_client
@@ -68,13 +68,17 @@ class MonitorPublisher:
         match = self.COMMIT_MESSAGE_PATTERN.search(commit_message)
         if not match:
             raise ValueError(f"提交消息格式错误: {commit_message}")
-        skill_name = match.group(1)
+        skill_path_raw = match.group(1)
+        # 取路径最后一段作为 skill_name (slug)
+        skill_name = skill_path_raw.rsplit("/", 1)[-1]
         # 转换受保护的 slug
         skill_name = self.convert_protected_slug(skill_name)
-        # 在仓库中搜索技能的实际路径
-        skill_path = self.find_skill_path(skill_name)
+        # 先尝试用完整路径直接定位，失败则搜索
+        skill_path = self._try_direct_path(skill_path_raw)
         if not skill_path:
-            raise ValueError(f"在仓库中未找到技能: {skill_name}")
+            skill_path = self.find_skill_path(skill_name)
+        if not skill_path:
+            raise ValueError(f"在仓库中未找到技能: {skill_name} (原始路径: {skill_path_raw})")
         version = match.group(2)
         if version:
             self.logger.info(f"从 commit message 提取的原始版本号: {version}")
@@ -90,6 +94,15 @@ class MonitorPublisher:
             "skill_path": skill_path,
             "version": version
         }
+
+    def _try_direct_path(self, raw_path: str) -> str:
+        """尝试用 commit 中的原始路径直接定位技能目录"""
+        candidates = [f"skills/{raw_path}", raw_path]
+        for candidate in candidates:
+            if self._has_skill_file(candidate):
+                self.logger.info(f"直接定位技能路径: {candidate}")
+                return candidate
+        return None
 
     def _resolve_default_version(self, skill_name: str) -> str:
         """版本号缺省时自动决定：ClawHub 无此 skill → 0.0.1，有则 Z+1"""
