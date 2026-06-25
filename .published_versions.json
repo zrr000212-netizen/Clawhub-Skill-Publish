@@ -71,6 +71,10 @@
     "huawei-cloud-business-support-query": {
       "version": "0.0.1",
       "commit_sha": "12631f4e67fa3c223c63d1fe8d907fb12febd058"
+    },
+    "huawei-cloud-computing-query": {
+      "version": "0.0.1",
+      "commit_sha": "038f4300c97a64b3f236392e3ca7cb1030953620"
     }
   }
 }
