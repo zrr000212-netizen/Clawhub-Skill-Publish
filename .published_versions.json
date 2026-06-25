@@ -67,6 +67,10 @@
     "huawei-cloud-obs-website-host": {
       "version": "0.0.1",
       "commit_sha": "fa9bbd7ccf59c9493d9e386045c4d10a373b8bc7"
+    },
+    "huawei-cloud-business-support-query": {
+      "version": "0.0.1",
+      "commit_sha": "12631f4e67fa3c223c63d1fe8d907fb12febd058"
     }
   }
 }
