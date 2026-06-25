@@ -83,6 +83,10 @@
     "huawei-cloud-obs-bucket-create": {
       "version": "0.0.1",
       "commit_sha": "a7490566d2bbef5bb684d6c2c888137b75e2d690"
+    },
+    "huawei-cloud-dws-cpu-diag": {
+      "version": "0.0.1",
+      "commit_sha": "b225bbefce39593b44e05042d135a1224cc24314"
     }
   }
 }
