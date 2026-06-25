@@ -79,6 +79,10 @@
     "huawei-cloud-obs-upload": {
       "version": "0.0.1",
       "commit_sha": "4efbf6acae1b7debffe9e6d985011c87179a9e89"
+    },
+    "huawei-cloud-obs-bucket-create": {
+      "version": "0.0.1",
+      "commit_sha": "a7490566d2bbef5bb684d6c2c888137b75e2d690"
     }
   }
 }
