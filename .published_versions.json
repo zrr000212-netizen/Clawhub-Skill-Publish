@@ -63,6 +63,10 @@
     "huawei-cloud-flexus-l-server-hermes-deployment": {
       "version": "0.0.3",
       "commit_sha": "e5cd518144645157ef1a0a06fad7d85c35529e23"
+    },
+    "huawei-cloud-obs-website-host": {
+      "version": "0.0.1",
+      "commit_sha": "fa9bbd7ccf59c9493d9e386045c4d10a373b8bc7"
     }
   }
 }
