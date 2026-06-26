@@ -95,6 +95,10 @@
     "huawei-cloud-dws-io-diag": {
       "version": "0.0.1",
       "commit_sha": "adb66d2e584d38da06602da2155ce6a43152f986"
+    },
+    "huawei-cloud-flexus-l-deploy-jiuwenswarm": {
+      "version": "0.0.1",
+      "commit_sha": "85f2b73e2b8293f4f0f4ecaad3cdaa7c2e064a84"
     }
   }
 }
