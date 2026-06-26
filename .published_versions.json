@@ -91,6 +91,10 @@
     "huawei-cloud-dws-dymem-diag": {
       "version": "0.0.1",
       "commit_sha": "b98faf3fa75ef6ec777588c82dffe8882467cd88"
+    },
+    "huawei-cloud-dws-io-diag": {
+      "version": "0.0.1",
+      "commit_sha": "adb66d2e584d38da06602da2155ce6a43152f986"
     }
   }
 }
