@@ -87,6 +87,10 @@
     "huawei-cloud-dws-cpu-diag": {
       "version": "0.0.1",
       "commit_sha": "b225bbefce39593b44e05042d135a1224cc24314"
+    },
+    "huawei-cloud-dws-dymem-diag": {
+      "version": "0.0.1",
+      "commit_sha": "b98faf3fa75ef6ec777588c82dffe8882467cd88"
     }
   }
 }
